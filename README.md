@@ -12,8 +12,8 @@ A Streamlit-based app that allows doctors to add and monitor patient health reco
 ## 📂 Files in This Repo
 
 - `app.py` – main Streamlit app
-- `requirements.txt` – required libraries to run the app
-- `README.md` – this file 😄
+- `requirements.py` – required libraries to run the app
+- `README.py` – this file 😄
 
 ## 🚀 How to Run This App Locally
 
