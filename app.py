@@ -1,28 +1,33 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import os
+from datetime import datetime
+
+# Load patient data
+DATA_FILE = "your_patient_data.csv"
+
+@st.cache_data
+def load_data():
+    return pd.read_csv(DATA_FILE)
+
+def save_data(df):
+    df.to_csv(DATA_FILE, index=False)
 
 st.set_page_config(page_title="HealthTrack Pro", layout="wide")
-
-st.markdown("<h1 style='text-align: center; color: #4fc3f7;'>🩺 HealthTrack Pro Dashboard</h1>", unsafe_allow_html=True)
-st.markdown("---")
+st.title("🩺 HealthTrack Pro: Live Patient Monitoring")
 
 # Load data
-if os.path.exists("your_patient_data.csv"):
-    df = pd.read_csv("your_patient_data.csv")
-else:
-    df = pd.DataFrame(columns=["Name", "Age", "Ward", "Status", "Checkup Date"])
+df = load_data()
 
-# Data entry form
-with st.form("patient_form"):
-    st.subheader("➕ Add New Patient Record")
-    name = st.text_input("Name")
-    age = st.number_input("Age", min_value=0)
-    ward = st.selectbox("Ward", ["Ward A", "Ward B", "Ward C"])
-    status = st.selectbox("Status", ["Stable", "Critical", "Recovering"])
-    date = st.date_input("Checkup Date")
-    submitted = st.form_submit_button("Submit")
+# Sidebar – Add new patient
+st.sidebar.header("➕ Add New Patient")
+with st.sidebar.form("new_patient_form"):
+    name = st.text_input("Patient Name")
+    age = st.number_input("Age", min_value=0, max_value=120, step=1)
+    ward = st.selectbox("Ward", ["A", "B", "C", "ICU", "ER"])
+    status = st.selectbox("Health Status", ["Stable", "Critical", "Recovering"])
+    checkup_date = st.date_input("Checkup Date", value=datetime.today())
+    submitted = st.form_submit_button("Add Patient")
 
     if submitted:
         new_data = {
@@ -30,31 +35,30 @@ with st.form("patient_form"):
             "Age": age,
             "Ward": ward,
             "Status": status,
-            "Checkup Date": date
+            "Checkup Date": checkup_date.strftime("%Y-%m-%d")
         }
         df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
-        df.to_csv("your_patient_data.csv", index=False)
-        st.success("✅ Patient data added!")
+        save_data(df)
+        st.success(f"Patient '{name}' added successfully!")
 
-# Dashboard
+# Dashboard section
+st.subheader("📊 Patient Summary Dashboard")
+
 col1, col2, col3 = st.columns(3)
 col1.metric("👨‍⚕️ Total Patients", len(df))
-col2.metric("🏥 Wards", df["Ward"].nunique())
-col3.metric("🚨 Critical Cases", df[df["Status"] == "Critical"].shape[0])
+col2.metric("🛏️ Wards Covered", df['Ward'].nunique())
+col3.metric("📅 Last Checkup", df['Checkup Date'].max())
 
-# Charts
-st.subheader("🏥 Ward Distribution")
-ward_chart = px.histogram(df, x="Ward", color="Ward", title="Ward Distribution")
-st.plotly_chart(ward_chart, use_container_width=True)
+# Chart 1: Patient count by ward
+fig1 = px.bar(df.groupby('Ward').size().reset_index(name='Count'),
+              x='Ward', y='Count', title="Patients by Ward")
+st.plotly_chart(fig1, use_container_width=True)
 
-st.subheader("📊 Patient Status Breakdown")
-status_chart = px.histogram(df, x="Status", color="Status", title="Status Breakdown")
-st.plotly_chart(status_chart, use_container_width=True)
+# Chart 2: Patient count by status
+fig2 = px.pie(df, names='Status', title="Patient Health Status Distribution")
+st.plotly_chart(fig2, use_container_width=True)
 
-# Table
-st.subheader("📋 Patient Table")
-st.dataframe(df)
+# View raw data
+with st.expander("🗂️ View Patient Records"):
+    st.dataframe(df)
 
-# Footer
-st.markdown("---")
-st.markdown("<p style='text-align: center; color: gray;'>Made with ❤️ by Lisha Ghosh</p>", unsafe_allow_html=True)
